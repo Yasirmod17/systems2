@@ -1,10 +1,10 @@
 .Code
 	SETALM	21	1
 ;;; Entry ID should not be 0. 0 for empty process
-Clock_Handler:
-	COPY	+temp_framePointer	%FP
+clock_int_handler:
+	COPY	+temp_FramePointer	%FP
 	COPY	+temp_StackPointer	%SP;save stack and frame pointer cos we need to input them to process table
-____________________________________________ ;Caller Subframe
+				;;;Caller Subframe
 
 	SUBUS 	%SP	%SP	8 ;create space for return address and preserve frame pointer
 	
@@ -15,25 +15,24 @@ ____________________________________________ ;Caller Subframe
 	COPY	%FP		*+temp_FramePointer	;copy frame pointer in process table into frame pointer register
 	ADDUS	%SP		%SP		8	;clear pfp and return address from stack
 	COPY	%SP		*+temp_StackPointer
-	SETALM	21	1
+	SETALM	*+ALM1	1
 	JUMPMD	*+IB_IP		2
-__________________________________
 Actual_function:
 	COPY	%FP	%SP	;point frame pointer to middle of caller and callee frame
 	SUBUS	%SP	%SP	4 ;make space for general register, go
 	COPY 	*%SP	%G0	  ;push GO onto stack
-	COPY	%G0	*+ProcessTable
-	BEQ	EqualHandler	*%G0	entryID
-	BNEQ	 unequalHandler	*%G0	entryID
-unequalHandler:	
+	COPY	%G0	*+process_table
+	BEQ	+EqualHandler	*%G0	*+processNum
+	BNEQ	 +UnequalHandler	*%G0	*+processNum
+UnequalHandler:	
 	ADD	%G0	%G0	48
-	BEQ	EqualHandler	*%G0	entryID
-	BNEQ	 unequalHandler	*%G0	entryID
+	BEQ	+EqualHandler	*%G0	*+processNum
+	BNEQ	 +UnequalHandler	*%G0	*+processNum
 EqualHandler:
 	ADD	%G0	%G0	44
 	COPY	 *%G0	*+temp_FramePointer
 	SUB	%G0	%G0	4
-	COPY	*%G0	*+tempStackPointer
+	COPY	*%G0	*+temp_StackPointer
 	SUB	%G0	%G0	4
 	COPY	*%G0	%G5
 	SUB	%G0	%G0	4
@@ -47,17 +46,18 @@ EqualHandler:
 	SUB	%G0	%G0	4
 	COPY	*%G0	*%SP	;pick GO from top of stack
 	SUB	%G0	%G0	4
-	COPY	*%G0	interruptbuffer
+	COPY	*%G0	*+IB_IP
 	JUMP	*+nextProcess
 nextProcess:
 	ADD 	%G0	%G0	36
-	BNEQ	+loadnewProcess  *%G0	0
+	BNEQ	+loadnewprocess  *%G0	0
 	BEQ	+findnextprocess *%G0	0
 loadnewprocess:
+	COPY	+processNum	*%G0
 	ADD	%G0	*%G0	44
-	COPY	+tempFramePointer	*%GO
+	COPY	+temp_FramePointer	*%G0
 	SUB	%G0	%G0	4
-	COPY	+tempStackPointer	*%G0
+	COPY	+temp_StackPointer	*%G0
 	SUB	%G0	%G0	4
 	COPY	%G5	*%G0
 	SUB	%G0	%G0	4
@@ -75,13 +75,12 @@ loadnewprocess:
 	COPY +IB_IP	*+temp2	;Set interrupt buffer to returnIP address 
 	ADDUS %FP	%SP	8
 	JUMP	*%FP 
-	___________________________________
 findnextprocess:
-	BEQ	reset_rom	*G0		+rom_count
+	BEQ	reset_rom	*%G0		+rom_count
 	ADD	%G0	%G0	48
-	BNEQ	+loadnewProcess	*%G0	0
+	BNEQ	+loadnewprocess	*%G0	0
 	JUMP	findnextprocess
 reset_rom:
-	COPY	%G0	*+ProcessTable
-	BNEQ	+loadnewProcess	*%G0	0
+	COPY	%G0	*+process_table
+	BNEQ	+loadnewprocess	*%G0	0
 	JUMP	findnextprocess
