@@ -11,7 +11,10 @@ Clock_Handler:
 	COPY	*%SP	%FP	  ;preserve frame pointer
 	ADDUS	%FP	%SP	4 ;point Frame pointer to return address
 	CALL 	+Actual_function	*%FP ;call function saving return address
-
+	ADDUS	%SP		%SP		4
+	COPY	%FP		*+temp_FramePointer	;copy frame pointer in process table into frame pointer register
+	ADDUS	%SP		%SP		8	;clear pfp and return address from stack
+	COPY	%SP		*+temp_StackPointer
 
 
 Actual_function:
