@@ -1,0 +1,85 @@
+.Code
+;;; Entry ID should not be 0. 0 for empty process
+Clock_Handler:
+	COPY	*+counter	0
+	COPY	+temp_framePointer	%FP
+	COPY	+temp_StackPointer	%SP;save stack and frame pointer cos we need to input them to process table
+ ;Caller Subframe
+
+	SUBUS 	%SP	%SP	8 ;create space for return address and preserve frame pointer
+	
+	COPY	*%SP	%FP	  ;preserve frame pointer
+	ADDUS	%FP	%SP	4 ;point Frame pointer to return address
+	CALL 	+Actual_function	*%FP ;call function saving return address
+
+
+
+Actual_function:
+	COPY	%FP	%SP	;point frame pointer to middle of caller and callee frame
+	SUBUS	%SP	%SP	4 ;make space for general register, go
+	COPY 	*%SP	%G0	  ;push GO onto stack
+	COPY	%G0	*+ProcessTable
+	BEQ	EqualHandler	*%G0	entryID
+	BNEQ	 unequalHandler	*%G0	entryID
+unequalHandler:
+	ADD		*+counter	*+counter	48
+	ADD	%G0	%G0	48
+	BEQ	EqualHandler	*%G0	entryID
+	BNEQ	 unequalHandler	*%G0	entryID
+EqualHandler:
+	ADD	%G0	%G0	44
+	COPY	 *%G0	*+temp_FramePointer
+	SUB	%G0	%G0	4
+	COPY	*%G0	*+tempStackPointer
+	SUB	%G0	%G0	4
+	COPY	*%G0	%G5
+	SUB	%G0	%G0	4
+	COPY	*%G0	%G4
+	SUB	%G0	%G0	4
+	COPY	*%G0	%G3
+	SUB	%G0	%G0	4
+	COPY 	*%G0	%G2
+	SUB	%G0	%G0	4
+	COPY 	*%G0	%G1
+	SUB	%G0	%G0	4
+	COPY	*%G0	*%SP	;pick GO from top of stack
+	SUB	%G0	%G0	4
+	COPY	*%G0	interruptbuffer
+	JUMP	*+nextProcess
+nextProcess:
+	ADD	*+counter	*+counter 48
+	BEQ	+reset_rom	*+counter	*+_pt_length
+	ADD 	%G0	%G0	36
+	BNEQ	+loadnewProcess  *%G0	0
+	BEQ	+findnextprocess *%G0	0
+loadnewprocess:
+	ADD	%G0	*%G0	44
+	COPY	+tempFramePointer	*%GO
+	SUB	%G0	%G0	4
+	COPY	+tempStackPointer	*%G0
+	SUB	%G0	%G0	4
+	COPY	%G5	*%G0
+	SUB	%G0	%G0	4
+	COPY	%G4	*%G0
+	SUB	%G0	%G0	4
+	COPY	%G3	*%G0
+	SUB	%G0	%G0	4
+	COPY	%G2	*%G0
+	SUB	%G0	%G0	4
+	COPY	%G1	*%G0
+	SUB	%G0	%G0	4
+	COPY	*+temp2	%G0	;save G0 cos we'll need to refer to it for IP jump
+	COPY	%G0	*%G0
+	SUB	*+temp2	*+temp2	4
+	JUMPMD	*+temp2	2
+	copy registrs and jump into IP
+findnextprocess:
+	ADD	*+counter	*+counter 48
+	BEQ	+reset_rom	*+counter	*+_pt_length
+	ADD	%G0	%G0	48
+	BNEQ	+loadnewProcess	*%G0	0
+	JUMP	findnextprocess
+reset_rom:
+	COPY	%G0	*+process_table
+	BNEQ	+loadnewprocess	*%G0	0
+	JUMP	+findnextprocess
