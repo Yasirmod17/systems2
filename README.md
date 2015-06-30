@@ -1,2 +1,2 @@
 # systems2
-final project
+final project for Computer Sysytems II class(COSC 261). Sheduling algorith for processes.
